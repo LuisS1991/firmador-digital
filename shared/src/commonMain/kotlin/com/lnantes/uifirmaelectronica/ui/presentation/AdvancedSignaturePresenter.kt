@@ -3,6 +3,7 @@ package com.lnantes.uifirmaelectronica.ui.presentation
 import com.lnantes.uifirmaelectronica.core.model.LogEntry
 import com.lnantes.uifirmaelectronica.core.model.LogLevel
 import com.lnantes.uifirmaelectronica.core.model.Receipt
+import com.lnantes.uifirmaelectronica.core.model.ReceiptStatus
 import com.lnantes.uifirmaelectronica.core.services.SignatureServices
 import com.lnantes.uifirmaelectronica.core.util.currentTimeMillis
 import com.lnantes.uifirmaelectronica.core.util.formatClock
@@ -20,6 +21,7 @@ enum class AdvancedPhase { IDLE, GENERATING, READY, SIGNING, SIGNED }
 data class AdvancedSignatureUiState(
     val phase: AdvancedPhase = AdvancedPhase.IDLE,
     val receipt: Receipt? = null,
+    val codigo: String = "6B1E-144A-749B",
     val localReceipts: List<Receipt> = emptyList(),
     val log: List<LogEntry> = emptyList(),
     val busy: Boolean = false,
@@ -27,6 +29,7 @@ data class AdvancedSignatureUiState(
 )
 
 sealed interface AdvancedUiEvent {
+    data class CodigoChanged(val value: String) : AdvancedUiEvent
     data object GenerateReceipt : AdvancedUiEvent
     data object SignWithToken : AdvancedUiEvent
     data object Reset : AdvancedUiEvent
@@ -39,8 +42,9 @@ sealed interface AdvancedUiEvent {
 class AdvancedSignaturePresenter(
     private val scope: CoroutineScope,
     private val services: SignatureServices,
+    private val codigoInicial: String = "6B1E-144A-749B",
 ) {
-    private val _state = MutableStateFlow(AdvancedSignatureUiState())
+    private val _state = MutableStateFlow(AdvancedSignatureUiState(codigo = codigoInicial))
     val state: StateFlow<AdvancedSignatureUiState> = _state.asStateFlow()
     private var logSequence = 0L
     private var operationJob: Job? = null
@@ -55,6 +59,9 @@ class AdvancedSignaturePresenter(
 
     fun onEvent(event: AdvancedUiEvent) {
         when (event) {
+            is AdvancedUiEvent.CodigoChanged -> _state.update {
+                it.copy(codigo = event.value.uppercase().take(14))
+            }
             AdvancedUiEvent.GenerateReceipt -> generateReceipt()
             AdvancedUiEvent.SignWithToken -> signWithToken()
             AdvancedUiEvent.Reset -> {
@@ -62,7 +69,10 @@ class AdvancedSignaturePresenter(
                 // el estado de "firmando" después del reinicio.
                 operationJob?.cancel()
                 operationJob = null
-                _state.value = AdvancedSignatureUiState(localReceipts = _state.value.localReceipts)
+                _state.value = AdvancedSignatureUiState(
+                    codigo = _state.value.codigo.ifBlank { codigoInicial },
+                    localReceipts = _state.value.localReceipts
+                )
                 log("Flujo reiniciado")
             }
             AdvancedUiEvent.ClearLog -> _state.update { it.copy(log = emptyList()) }
@@ -73,9 +83,10 @@ class AdvancedSignaturePresenter(
         operationJob?.cancel()
         operationJob = scope.launch {
             _state.update { it.copy(phase = AdvancedPhase.GENERATING, busy = true, error = null, receipt = null) }
-            log("Iniciando generación de recibo PDF…")
+            val codigo = _state.value.codigo.trim()
+            log("Consultando datos del recibo $codigo…")
 
-            services.receipts.generateReceipt { message -> log(message) }.fold(
+            services.receipts.generateReceipt(codigo) { message -> log(message) }.fold(
                 onSuccess = { receipt ->
                     _state.update { it.copy(receipt = receipt, phase = AdvancedPhase.READY, busy = false) }
                     log("Recibo ${receipt.number} disponible para firma", LogLevel.SUCCESS)
@@ -91,6 +102,10 @@ class AdvancedSignaturePresenter(
             val receipt = _state.value.receipt
             if (receipt == null) {
                 log("Genere un recibo antes de firmar", LogLevel.WARNING)
+                return@launch
+            }
+            if (_state.value.phase == AdvancedPhase.SIGNED || receipt.status == ReceiptStatus.SIGNED) {
+                log("Este recibo ya está firmado; genere otro para firmar de nuevo", LogLevel.WARNING)
                 return@launch
             }
             _state.update { it.copy(phase = AdvancedPhase.SIGNING, busy = true, error = null) }

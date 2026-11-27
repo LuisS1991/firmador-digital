@@ -1,6 +1,7 @@
 package com.lnantes.uifirmaelectronica.ui.presentation
 
 import com.lnantes.uifirmaelectronica.core.model.CapturedSignature
+import com.lnantes.uifirmaelectronica.core.model.DocumentInfo
 import com.lnantes.uifirmaelectronica.core.model.LogEntry
 import com.lnantes.uifirmaelectronica.core.model.LogLevel
 import com.lnantes.uifirmaelectronica.core.model.SignedDocument
@@ -50,6 +51,10 @@ class CommonSignaturePresenter(
 ) {
     private val _state = MutableStateFlow(CommonSignatureUiState())
     val state: StateFlow<CommonSignatureUiState> = _state.asStateFlow()
+
+    /** Documento real que expone el backend (recibo pendiente o contrato de demo). */
+    val document: DocumentInfo get() = services.signing.currentDocument()
+
     private var logSequence = 0L
 
     fun onEvent(event: CommonUiEvent) {
@@ -113,6 +118,10 @@ class CommonSignaturePresenter(
         val signature = _state.value.signature
         if (signature == null) {
             log("Primero sincronice y capture una firma", LogLevel.WARNING)
+            return@launch
+        }
+        if (_state.value.phase == CommonPhase.SIGNED) {
+            log("Este recibo ya está firmado; reinicie el flujo para firmar otro", LogLevel.WARNING)
             return@launch
         }
         val document = services.signing.currentDocument()

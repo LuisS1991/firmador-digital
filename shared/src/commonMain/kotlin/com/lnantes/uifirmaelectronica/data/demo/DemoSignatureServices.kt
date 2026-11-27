@@ -4,6 +4,7 @@ import com.lnantes.uifirmaelectronica.core.model.CapturedSignature
 import com.lnantes.uifirmaelectronica.core.model.DocumentInfo
 import com.lnantes.uifirmaelectronica.core.model.ExchangeOperation
 import com.lnantes.uifirmaelectronica.core.model.ExchangeResult
+import com.lnantes.uifirmaelectronica.core.model.LadoFirma
 import com.lnantes.uifirmaelectronica.core.model.Receipt
 import com.lnantes.uifirmaelectronica.core.model.ReceiptStatus
 import com.lnantes.uifirmaelectronica.core.model.RemoteStation
@@ -90,11 +91,12 @@ private class DemoDocumentSigningService : DocumentSigningService {
     override suspend fun sign(
         document: DocumentInfo,
         signature: CapturedSignature,
+        lado: LadoFirma,
         onProgress: (String) -> Unit,
     ): Result<SignedDocument> = runCatching {
         onProgress("Preparando documento y calculando huella…")
         delay(600)
-        onProgress("Insertando imagen de firma…")
+        onProgress("Insertando imagen de firma en ${lado.etiqueta}…")
         delay(650)
         onProgress("Enviando datos al repositorio local…")
         delay(700)
@@ -176,9 +178,11 @@ private class DemoReceiptService : ReceiptService {
 
     override suspend fun signWithToken(
         receipt: Receipt,
+        lado: LadoFirma,
+        firmante: String?,
         onProgress: (String) -> Unit,
     ): Result<Receipt> = runCatching {
-        onProgress("Detectando token físico…")
+        onProgress("Detectando token físico para ${lado.etiqueta}…")
         delay(600)
         onProgress("Token A3B9-77C1 conectado · verificando PIN…")
         delay(700)

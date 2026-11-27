@@ -14,6 +14,8 @@ data class Receipt(
     val concept: String,
     val amount: String,
     val signer: String,
+    /** Funcionario que entrega la indumentaria (campo `operador` de la API). */
+    val entregador: String = "",
     val issuedAt: String,
     val fileName: String,
     val status: ReceiptStatus,

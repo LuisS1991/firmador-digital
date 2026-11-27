@@ -1,6 +1,7 @@
 package com.lnantes.uifirmaelectronica.views.advanced
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,8 +22,10 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.lnantes.uifirmaelectronica.core.model.AppDestination
 import com.lnantes.uifirmaelectronica.core.model.LogLevel
 import com.lnantes.uifirmaelectronica.core.model.ReceiptStatus
@@ -102,8 +105,40 @@ fun AdvancedSignatureView(
                     subtitle = "Se crea el comprobante antes de aplicar la firma",
                     icon = AppIcon.PDF,
                 ) {
+                    Text(
+                        "Código del recibo (endpoint local)",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(Modifier.height(6.dp))
+                    Box(
+                        Modifier
+                            .fillMaxWidth()
+                            .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(9.dp))
+                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                    ) {
+                        BasicTextField(
+                            value = state.codigo,
+                            onValueChange = { send(AdvancedUiEvent.CodigoChanged(it)) },
+                            singleLine = true,
+                            textStyle = TextStyle(
+                                color = MaterialTheme.colorScheme.onSurface,
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.SemiBold,
+                            ),
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
+                    Spacer(Modifier.height(14.dp))
                     if (state.receipt != null) {
-                        ReceiptSummary(state.receipt!!.number, state.receipt!!.concept, state.receipt!!.amount, state.receipt!!.fileName)
+                        ReceiptSummary(
+                            number = state.receipt!!.number,
+                            concept = state.receipt!!.concept,
+                            amount = state.receipt!!.amount,
+                            fileName = state.receipt!!.fileName,
+                            signer = state.receipt!!.signer,
+                            issuedAt = state.receipt!!.issuedAt,
+                        )
                         Spacer(Modifier.height(14.dp))
                         Row {
                             SecondaryActionButton(
@@ -117,7 +152,7 @@ fun AdvancedSignatureView(
                         }
                     } else {
                         Text(
-                            "El recivo se guardará en la carpeta local de la aplicación. " +
+                            "El recibo se guardará en la carpeta local de la aplicación. " +
                                 "Una vez generado podrá firmarlo con el token físico.",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -205,7 +240,14 @@ fun AdvancedSignatureView(
 }
 
 @Composable
-private fun ReceiptSummary(number: String, concept: String, amount: String, fileName: String) {
+private fun ReceiptSummary(
+    number: String,
+    concept: String,
+    amount: String,
+    fileName: String,
+    signer: String,
+    issuedAt: String,
+) {
     Column(
         Modifier
             .fillMaxWidth()
@@ -221,6 +263,8 @@ private fun ReceiptSummary(number: String, concept: String, amount: String, file
         }
         Spacer(Modifier.height(8.dp))
         InfoRow(AppIcon.INFO, "Concepto", concept)
+        if (signer.isNotBlank()) InfoRow(AppIcon.SHIELD, "Titular", signer)
+        if (issuedAt.isNotBlank()) InfoRow(AppIcon.CLOCK, "Fecha del recibo", issuedAt)
         InfoRow(AppIcon.SAVE, "Archivo", fileName)
     }
 }

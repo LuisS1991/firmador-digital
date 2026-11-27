@@ -3,6 +3,7 @@ package com.lnantes.uifirmaelectronica.core.services
 import com.lnantes.uifirmaelectronica.core.model.CapturedSignature
 import com.lnantes.uifirmaelectronica.core.model.DocumentInfo
 import com.lnantes.uifirmaelectronica.core.model.ExchangeResult
+import com.lnantes.uifirmaelectronica.core.model.LadoFirma
 import com.lnantes.uifirmaelectronica.core.model.Receipt
 import com.lnantes.uifirmaelectronica.core.model.RemoteStation
 import com.lnantes.uifirmaelectronica.core.model.SignedDocument
@@ -15,6 +16,10 @@ import kotlinx.coroutines.flow.StateFlow
  */
 interface TabletSyncService {
     suspend fun detectTablet(): Result<TabletDevice>
+
+    /** Reintenta el enlace después de una desconexión AOA sin recrear la app. */
+    suspend fun reconectar(): Result<TabletDevice> = detectTablet()
+
     suspend fun synchronize(
         device: TabletDevice,
         onProgress: (String) -> Unit,
@@ -30,12 +35,14 @@ interface SignatureCaptureService {
 
 /**
  * Aplicación de la firma común sobre el documento.
+ * [lado] define la columna del recibo; por defecto Recibe para compatibilidad.
  */
 interface DocumentSigningService {
     fun currentDocument(): DocumentInfo
     suspend fun sign(
         document: DocumentInfo,
         signature: CapturedSignature,
+        lado: LadoFirma = LadoFirma.RECIBE,
         onProgress: (String) -> Unit,
     ): Result<SignedDocument>
 }
@@ -47,10 +54,37 @@ interface DocumentSigningService {
 interface ReceiptService {
     val receipts: StateFlow<List<Receipt>>
     suspend fun generateReceipt(onProgress: (String) -> Unit): Result<Receipt>
+
+    /**
+     * Genera el recibo para un código concreto (deep link o campo editable).
+     * La implementación por defecto mantiene compatibilidad con los servicios
+     * de demo que no conocen códigos reales.
+     */
+    suspend fun generateReceipt(
+        code: String?,
+        onProgress: (String) -> Unit,
+    ): Result<Receipt> = generateReceipt(onProgress)
+
+    /**
+     * Firma con cédula/token. [lado] elige la columna y [firmante] el nombre que
+     * se muestra en la firma visible (por defecto, el de esa columna).
+     */
     suspend fun signWithToken(
         receipt: Receipt,
+        lado: LadoFirma = LadoFirma.ENTREGA,
+        firmante: String? = null,
         onProgress: (String) -> Unit,
     ): Result<Receipt>
+
+    /**
+     * Borra el PDF base y los intermedios una vez guardado el archivo final.
+     * No elimina [archivoFinal].
+     */
+    suspend fun limpiarTemporales(
+        codigo: String,
+        archivoFinal: String?,
+        onProgress: (String) -> Unit = {},
+    ): Result<Unit> = Result.success(Unit)
 }
 
 /**

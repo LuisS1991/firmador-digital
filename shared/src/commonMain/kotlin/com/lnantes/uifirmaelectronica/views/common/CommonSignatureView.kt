@@ -169,8 +169,14 @@ fun CommonSignatureView(presenter: CommonSignaturePresenter) {
                     subtitle = "Aplicación de la firma común",
                     icon = AppIcon.DOCUMENT,
                 ) {
-                    InfoRow(AppIcon.PDF, "Documento", "Contrato_de_prestacion_2026.pdf")
-                    InfoRow(AppIcon.INFO, "Referencia", "DOC-2026-1184 · 4 páginas")
+                    val documento = presenter.document
+                    InfoRow(AppIcon.PDF, "Documento", documento.name)
+                    InfoRow(
+                        AppIcon.INFO,
+                        "Referencia",
+                        "${documento.reference} · ${documento.pages} página(s)" +
+                            if (documento.sizeKb > 0) " · ${documento.sizeKb} KB" else "",
+                    )
                     Spacer(Modifier.height(16.dp))
                     PrimaryActionButton(
                         text = if (state.signedDocument != null) "Firmar de nuevo" else "Firmar documento",

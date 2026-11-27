@@ -21,6 +21,18 @@ data class CapturedSignature(
     val strokeCount: Int,
 )
 
+/** Columna del recibo donde se estampa una firma. */
+enum class LadoFirma(val etiqueta: String) {
+    ENTREGA("Quien entrega"),
+    RECIBE("Quien recibe"),
+}
+
+/** Modalidad elegida por cada firmante (la normativa exige ofrecer ambas a todos). */
+enum class MetodoFirma(val etiqueta: String) {
+    COMUN("Común (trazos)"),
+    AVANZADA("Avanzada (token)"),
+}
+
 /**
  * Documento pendiente de firma.
  */
